@@ -50,6 +50,9 @@ Utils.loadConfiguration()
 
 import rexx
 import tkExtra
+##### tealvince_start: import tkDialogs
+import tkDialogs
+##### tealvince_end
 import Unicode
 import Updates
 import bFileDialog
@@ -330,6 +333,10 @@ class Application(Toplevel,Sender):
 		self.bind('<<AutolevelZero>>',	self.autolevel.setZero)
 		self.bind('<<AutolevelClear>>',	self.autolevel.clear)
 		self.bind('<<AutolevelScan>>',	self.autolevel.scan)
+
+##### tealvince_start: add rescan option
+		self.bind('<<AutolevelRescan>>',	self.autolevel.rescan)
+##### tealvince_end
 
 		self.bind('<<CameraOn>>',	self.canvas.cameraOn)
 		self.bind('<<CameraOff>>',	self.canvas.cameraOff)
@@ -1534,6 +1541,67 @@ class Application(Toplevel,Sender):
 		elif rexx.abbrev("RULER",cmd,2):
 			self.canvas.setActionRuler()
 
+####### tealvince_start: Add support for scaling commands
+		# SCA*LEXY [n]: scale all x/y coordinates by n fraction
+		# SCALEX [n]: scale all x coordinates by n fraction
+		# SCALEY [n]: scale all y coordinates by n fraction
+		# SCALEZ [n]: scale all z coordinates by n fraction
+		# SCALEF [n]: scale all feed rates by n fraction
+		elif rexx.abbrev("SCALEXY",cmd,3) or cmd == "SCALEX" or cmd == "SCALEY" or cmd == "SCALEZ" or cmd == "SCALEF":
+			acc = None
+			if len(line)>1:
+				try:
+					acc = float(line[1])
+				except:
+					pass
+			else:
+				dialog = tkDialogs.InputDialog(self,"Scale Selection","Enter fractional value (>0)", "1")
+				acc = float(dialog.show())
+
+			if acc != None and acc > 0:
+				if cmd == "SCALEX":
+					self.executeOnSelection("SCALEX", False, acc)
+				if cmd == "SCALEY":
+					self.executeOnSelection("SCALEY", False, acc)
+				if cmd == "SCALEZ":
+					self.executeOnSelection("SCALEZ", False, acc)
+				if cmd == "SCALEF":
+					self.executeOnSelection("SCALEF", False, acc)
+				else:
+					self.executeOnSelection("SCALEXY", False, acc)
+
+		# SETZC*UT [n]: set z height for all movements at surface level and below
+		elif rexx.abbrev("SETZCUT",cmd,5):
+			acc = None
+			if len(line)>1:
+				try:
+					acc = float(line[1])
+				except:
+					pass
+			else:
+				dialog = tkDialogs.InputDialog(self,"Set cutting Z","Enter z-value 0 or less", "0")
+				acc = float(dialog.show())
+
+			if acc != None and acc <= 0:
+				self.executeOnSelection("SETZCUT", False, acc)
+
+		# SETZS*AFE [n]: set z height for all movements at surface level and below
+		elif rexx.abbrev("SETZSAFE",cmd,5):
+			acc = None
+			if len(line)>1:
+				try:
+					acc = float(line[1])
+				except:
+					pass
+			else:
+				dialog = tkDialogs.InputDialog(self,"Set safe Z","Enter z-value greater than 0", "5")
+				acc = float(dialog.show())
+
+			if acc != None and acc > 0:
+				self.executeOnSelection("SETZSAFE", False, acc)
+
+####### tealvince_end
+
 		# STAT*ISTICS: show statistics of current job
 		elif rexx.abbrev("STATISTICS",cmd,4):
 			self.showStats()
@@ -1698,6 +1766,22 @@ class Application(Toplevel,Sender):
 			self.gcode.roundLines(items, *args)
 		elif cmd == "ROTATE":
 			self.gcode.rotateLines(items, *args)
+####### tealvince_start: Add support for scaling commands
+		elif cmd == "SCALEF":
+			self.gcode.scaleFLines(items, *args)
+		elif cmd == "SCALEX":
+			self.gcode.scaleXLines(items, *args)
+		elif cmd == "SCALEY":
+			self.gcode.scaleYLines(items, *args)
+		elif cmd == "SCALEZ":
+			self.gcode.scaleZLines(items, *args)
+		elif cmd == "SCALEXY":
+			self.gcode.scaleXYLines(items, *args)
+		elif cmd == "SETZCUT":
+			self.gcode.setCutZLines(items, *args)
+		elif cmd == "SETZSAFE":
+			self.gcode.setSafeZLines(items, *args)
+####### tealvince_end
 		elif cmd == "TABS":
 			self.gcode.createTabs(items, *args)
 

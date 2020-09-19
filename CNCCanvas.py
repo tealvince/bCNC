@@ -1593,7 +1593,10 @@ class CNCCanvas(Canvas):
 			self.delete(self._probe)
 			self._probe = None
 		if not self.draw_probe: return
-		if self.view in (VIEW_XZ, VIEW_YZ): return
+
+####### tealvince_start: Show probe in X-Z and Y-Z views
+      #	if self.view in (VIEW_XZ, VIEW_YZ): return
+####### tealvince_end
 
 		# Draw probe grid
 		probe = self.gcode.probe
@@ -1612,13 +1615,24 @@ class CNCCanvas(Canvas):
 			self.tag_lower(item)
 
 		# Draw probe points
+
+####### tealvince_start: Show probe surface as vertical lines
 		for i,uv in enumerate(self.plotCoords(probe.points)):
-			item = self.create_text(uv,
-						text="%.*f"%(CNC.digits,probe.points[i][2]),
+			if i>0:
+				x1 = probe.points[i-1][0]
+				y1 = probe.points[i-1][1]
+				z1 = probe.points[i-1][2]
+				x2 = probe.points[i][0]
+				y2 = probe.points[i][1]
+				z2 = probe.points[i][2]
+
+				if y1==y2:
+					xyz = [(x1, y1, z1), (x2, y2, z2)]
+					item = self.create_line(self.plotCoords(xyz),
 						tag="Probe",
-						justify=CENTER,
-						fill=PROBE_TEXT_COLOR)
-			self.tag_lower(item)
+						fill='Blue')
+					self.tag_lower(item)
+####### tealvince_end
 
 		# Draw image map if numpy exists
 		#if numpy is not None and probe.matrix and self.view == VIEW_XY:

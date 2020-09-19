@@ -182,6 +182,21 @@ class AutolevelGroup(CNCRibbon.ButtonGroup):
 		self.addWidget(b)
 		tkExtra.Balloon.set(b, _("Scan probed area for level information on Z plane"))
 
+##### tealvince_start: Add option to continue a failed scan by appending new data to previous scan
+		col += 1
+		b = Ribbon.LabelButton(self.frame, self, "<<AutolevelRescan>>",
+				image=Utils.icons["gear32"],
+				text=_("Rescan"),
+				compound=TOP,
+				justify=CENTER,
+				width=48,
+				background=Ribbon._BACKGROUND)
+		b.grid(row=row, column=col, rowspan=3, padx=0, pady=0, sticky=NSEW)
+		self.addWidget(b)
+		tkExtra.Balloon.set(b, _("Scan probed area, keeping any previous data below startY"))
+
+##### tealvince_end
+
 #===============================================================================
 # Probe Common Offset
 #===============================================================================
@@ -902,8 +917,44 @@ class AutolevelFrame(CNCRibbon.PageFrame):
 		lframe.grid_columnconfigure(2,weight=2)
 		lframe.grid_columnconfigure(3,weight=1)
 
+##### tealvince_start: Add rescan options
+
+		lframe = LabelFrame(self, text=_("Rescan"), foreground="DarkBlue")
+		lframe.pack(side=TOP, fill=X)
+
+		row,col = 0,0
+		# Empty
+		col += 1
+		Label(lframe, text=_("Min")).grid(row=row, column=col, sticky=EW)
+		col += 1
+		Label(lframe, text=_("Max")).grid(row=row, column=col, sticky=EW)
+		col += 1
+
+		# --- Rescan Y ---
+		row += 1
+		col  = 0
+		Label(lframe, text="Y:").grid(row=row, column=col, sticky=E)
+		col += 1
+		self.probeRescanYmin = tkExtra.FloatEntry(lframe, background="White", width=5)
+		self.probeRescanYmin.grid(row=row, column=col, sticky=EW)
+		tkExtra.Balloon.set(self.probeRescanYmin, _("Rescan Y minimum"))
+		self.addWidget(self.probeRescanYmin)
+
+		col += 1
+		self.probeRescanYmax = tkExtra.FloatEntry(lframe, background="White", width=5)
+		self.probeRescanYmax.grid(row=row, column=col, sticky=EW)
+		tkExtra.Balloon.set(self.probeRescanYmax, _("Rescan Y maximum"))
+		self.addWidget(self.probeRescanYmax)
+
+		lframe.grid_columnconfigure(1,weight=2)
+		lframe.grid_columnconfigure(2,weight=2)
+		lframe.grid_columnconfigure(3,weight=1)
+
+##### tealvince_end
+
 		self.loadConfig()
 
+	#-----------------------------------------------------------------------
 	#-----------------------------------------------------------------------
 	def setValues(self):
 		probe = self.app.gcode.probe
@@ -921,6 +972,11 @@ class AutolevelFrame(CNCRibbon.PageFrame):
 
 		self.probeZmin.set(str(probe.zmin))
 		self.probeZmax.set(str(probe.zmax))
+
+##### tealvince_start: Add rescan options
+		self.probeRescanYmin.set(str(probe.rescan_ymin))
+		self.probeRescanYmax.set(str(probe.rescan_ymax))
+##### tealvince_end
 
 	#-----------------------------------------------------------------------
 	def saveConfig(self):
@@ -941,6 +997,10 @@ class AutolevelFrame(CNCRibbon.PageFrame):
 		self.probeYmax.set(Utils.getFloat("Probe","ymax"))
 		self.probeZmin.set(Utils.getFloat("Probe","zmin"))
 		self.probeZmax.set(Utils.getFloat("Probe","zmax"))
+##### tealvince_start: Add rescan options
+		self.probeRescanYmin.set("0")
+		self.probeRescanYmax.set("1000")
+##### tealvince_end
 
 		self.probeXbins.delete(0,END)
 		self.probeXbins.insert(0,max(2,Utils.getInt("Probe","xn",5)))
@@ -1025,6 +1085,18 @@ class AutolevelFrame(CNCRibbon.PageFrame):
 					parent=self.winfo_toplevel())
 			error = True
 
+##### tealvince_start: Add rescan options
+		try:
+			probe.rescan_ymin = float(self.probeRescanYmin.get())
+			probe.rescan_ymax = float(self.probeRescanYmax.get())
+		except ValueError:
+			if verbose:
+				tkMessageBox.showerror(_("Probe Error"),
+						_("Invalid Rescan Y range"),
+						parent=self.winfo_toplevel())
+			error = True
+##### tealvince_end
+
 		return error
 
 	#-----------------------------------------------------------------------
@@ -1056,6 +1128,13 @@ class AutolevelFrame(CNCRibbon.PageFrame):
 		self.event_generate("<<DrawProbe>>")
 		# absolute
 		self.app.run(lines=self.app.gcode.probe.scan())
+##### tealvince_start: Add rescan options
+	def rescan(self, event=None):
+		if self.change(): return
+		self.event_generate("<<DrawProbe>>")
+		# absolute
+		self.app.run(lines=self.app.gcode.probe.rescan())
+##### tealvince_end
 
 #===============================================================================
 # Camera Group
@@ -1689,9 +1768,13 @@ class ToolFrame(CNCRibbon.PageFrame):
 						prb_reverse[CNC.vars["prbcmd"][-1]])
 			currentFeedrate = CNC.vars["fastprbfeed"]
 			while currentFeedrate > CNC.vars["prbfeed"]:
-				lines.append("g91 [prbcmd] f%f z[-tooldistance]" % currentFeedrate)
-				lines.append("g91 [prbcmdreverse] f%f z[tooldistance]" % currentFeedrate)
+##### tealvince_start: Add rescan options
+				lines.append("g91 [prbcmd] %s z[-tooldistance]" \
+						% CNC.fmt('f',currentFeedrate))
+				lines.append("[prbcmdreverse] %s z[tooldistance+wz-mz]" \
+						% CNC.fmt('f',currentFeedrate))
 				currentFeedrate /= 10
+##### tealvince_end
 		lines.append("g91 [prbcmd] f[prbfeed] z[-tooldistance]")
 		lines.append("g4 p1")	# wait a sec
 		lines.append("%wait")

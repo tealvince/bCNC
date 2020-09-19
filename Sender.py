@@ -768,7 +768,9 @@ class Sender:
 	#----------------------------------------------------------------------
 	def stopProbe(self):
 		if self.gcode.probe.start:
-			self.gcode.probe.clear()
+##### tealvince_start: Keep data between scans to support rescan
+			self.gcode.probe.reset()
+##### tealvince_end
 
 	#----------------------------------------------------------------------
 	def getBufferFill(self):
